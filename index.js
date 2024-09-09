@@ -15,7 +15,7 @@ const pool = mysql
     keepAliveInitialDelay: 0,
   })
 
-const QueryBuilder = require('./QueryBuilder')
+const QueryBuilder = require('./src/QueryBuilder')
 
 pool.SELECT = function () {
   return new QueryBuilder(pool, 'SELECT {{columns}}')
@@ -23,6 +23,14 @@ pool.SELECT = function () {
 
 pool.INSERT = function (ignore = false) {
   return new QueryBuilder(pool, `INSERT ${ignore ? 'IGNORE' : ''}`)
+}
+
+pool.UPDATE = function (Model) {
+  return new QueryBuilder(pool, `UPDATE \`${Model.name}\``, { Model })
+}
+
+pool.DELETE = function () {
+  return new QueryBuilder(pool, 'DELETE')
 }
 
 module.exports = { pool }

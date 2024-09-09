@@ -1,6 +1,6 @@
 const { pool } = require('../index');
-const Schema = require('../Schema')
-const { String, Datetime } = require('../Types')
+const Schema = require('../src/Schema')
+const { String, Datetime } = require('../src/Types')
 
 
 class camera extends Schema {

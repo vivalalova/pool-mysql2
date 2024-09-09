@@ -1,9 +1,9 @@
 const mysql = require('mysql2')
 
 module.exports = class QueryBuilder {
-  constructor(pool, firstStatement) {
-    this.pool = pool;
-    this.Model = null;
+  constructor(pool, firstStatement, options = {}) {
+    this.pool = pool
+    this.Model = options.Model
     this.query = [firstStatement]
     this.values = []
   }
@@ -17,17 +17,6 @@ module.exports = class QueryBuilder {
   FROM(Model) {
     this.Model = Model;
     this.query.push(`FROM \`${this.Model.name}\``);
-    return this;
-  }
-
-  UPDATE(Model) {
-    this.Model = Model;
-    this.query.push(`UPDATE \`${this.Model.name}\``);
-    return this;
-  }
-
-  DELETE() {
-    this.query.push(`DELETE`);
     return this;
   }
 
