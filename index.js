@@ -1,151 +1,146 @@
-const pool = require('mysql2/promise')
-    .createPool({
-        host: 'localhost',
-        user: 'root',
-        password: '123',
-        database: 'db',
-        waitForConnections: true,
-        connectionLimit: 10,
-        maxIdle: 10, // 最大空闲连接数，默认等于 `connectionLimit`
-        idleTimeout: 60000, // 空闲连接超时，以毫秒为单位，默认值为 60000 ms
-        queueLimit: 0,
-        enableKeepAlive: true,
-        keepAliveInitialDelay: 0,
-    })
-
-/////////////////////////////////////////////////////////////////////////
-
-
-class Schema {
-    static get columns() {
-        return {};
-    }
-}
-
-class Camera extends Schema {
-    static get columns() {
-        return {
-            id: 'string',
-            name: 'string',
-            description: 'string',
-            location: 'string',
-            url: 'string',
-            tag1: 'string',
-            created_at: 'datetime',
-            updated_at: 'datetime'
-        };
-    }
-}
+const mysql = require('mysql2')
+const pool = require('./pool')
 
 pool.INSERT = function (ignore = false) {
-    return new QueryBuilder(pool, 'INSERT', ignore);
+  return new QueryBuilder(pool, `INSERT ${ignore ? 'IGNORE' : ''}`)
 }
 
 pool.SELECT = function () {
-    return new QueryBuilder(pool, 'SELECT');
+  return new QueryBuilder(pool, 'SELECT {{columns}}')
+}
+
+class Schema {
+  static get columns() {
+    return {}
+  }
+}
+
+class Camera extends Schema {
+  static get columns() {
+    return {
+      id: 'string',
+      name: 'string',
+      description: 'string',
+      location: 'string',
+      url: 'string',
+      tag1: 'string',
+      created_at: 'datetime',
+      updated_at: 'datetime'
+    };
+  }
 }
 
 
 class QueryBuilder {
-    constructor(pool, queryType, ignore = false) {
-        this.pool = pool;
-        this.queryType = queryType;
-        this.ignore = ignore;
-        this.Model = null;
-        this.columns = {};
-        this.whereConditions = [];
-        this.limitValue = null;
-        this.offsetValue = null;
-        this.orderByColumns = [];
-        this.query = '';
-        this.values = [];
+  constructor(pool, queryType) {
+    this.pool = pool;
+    this.Model = null;
+    this.query = [queryType]
+    this.values = []
+  }
+
+  INTO(Model) {
+    this.Model = Model;
+    this.query.push(`INTO ${this.Model.name.toLowerCase()}`);
+    return this;
+  }
+
+  FROM(Model) {
+    this.Model = Model;
+    this.query.push(`FROM ${this.Model.name.toLowerCase()}`);
+    return this;
+  }
+
+  SET() {
+    const updateStatements = Object.keys(this.values[0]).map(col => `${col} = VALUES(${col})`).join(', ');
+    this.query.push(`SET ${updateStatements}, updated_at = NOW()`);
+    return this;
+  }
+
+  VALUES(array) {
+    this.values = array;
+    const columnNames = Object.keys(this.values[0]);
+    const placeholders = columnNames.map(() => '?').join(', ');
+    this.query.push(`(${columnNames.join(', ')}) VALUES(${placeholders})`);
+    return this;
+  }
+
+  WHERE_AND(object) {
+    if (typeof object !== 'object') {
+      throw 'WHERE_CLAUSE must input object'
     }
 
-    INTO(Model) {
-        this.Model = Model;
-        this.columns = Model.columns;
-        this.query += `INTO ${this.Model.name.toLowerCase()}s`;
-        return this;
+    let result = this.WHERE('1=1')
+
+    for (const key in object) {
+      const value = object[key]
+      result = result.AND({ [key]: value })
     }
 
-    FROM(Model) {
-        this.Model = Model;
-        this.columns = Model.columns;
-        this.query += ` FROM ${this.Model.name.toLowerCase()}s`;
-        return this;
+    return this;
+  }
+
+  WHERE(condition, value = null) {
+    if (typeof condition === 'string') {
+      this.query.push('WHERE ' + condition)
+      if (value != undefined) {
+        this.values.push(value)
+      }
+    } else if (typeof condition === 'object') {
+      this.query.push(`WHERE ${Object.keys(condition)[0]} = ?`)
+      this.values.push(Object.values(condition)[0])
     }
 
-    SET() {
-        const updateStatements = Object.keys(this.values[0]).map(col => `${col} = VALUES(${col})`).join(', ');
-        this.query += ` SET ${updateStatements}, updated_at = NOW()`;
-        return this;
+    return this;
+  }
+
+  AND(condition, value = null) {
+    if (typeof condition === 'string') {
+      this.query.push('AND ' + condition)
+      if (value != undefined) {
+        this.values.push(value)
+      }
+    } else if (typeof condition === 'object') {
+      this.query.push(`WHERE ${Object.keys(condition)[0]} = ?`)
+      this.values.push(Object.values(condition)[0])
     }
 
-    VALUES(array) {
-        this.values = array;
-        const columnNames = Object.keys(this.values[0]);
-        const placeholders = columnNames.map(() => '?').join(', ');
-        this.query += ` (${columnNames.join(', ')}) VALUES (${placeholders})`;
-        return this;
-    }
+    return this;
+  }
 
-    WHERE(condition) {
-        if (this.whereConditions.length === 0) {
-            this.query += ' WHERE';
-        } else {
-            this.query += ' AND';
-        }
-        this.query += ` ${condition}`;
-        this.whereConditions.push(condition);
-        return this;
-    }
+  LIMIT(limit) {
+    this.query.push(`LIMIT ?`);
+    this.values.push(limit);
+    return this;
+  }
 
-    LIMIT(limit) {
-        this.limitValue = limit;
-        this.query += ` LIMIT ${limit}`;
-        return this;
-    }
+  OFFSET(offset) {
+    this.query.push(`OFFSET ?`);
+    this.values.push(offset);
+    return this;
+  }
 
-    OFFSET(offset) {
-        this.offsetValue = offset;
-        this.query += ` OFFSET ${offset}`;
-        return this;
-    }
+  ORDER_BY(column, direction = 'ASC') {
+    this.query.push(`ORDER BY ${column} ${direction} `);
+    return this;
+  }
 
-    ORDER_BY(column, direction = 'ASC') {
-        if (this.orderByColumns.length === 0) {
-            this.query += ' ORDER BY';
-        } else {
-            this.query += ',';
-        }
-        this.query += ` ${column} ${direction}`;
-        this.orderByColumns.push(`${column} ${direction}`);
-        return this;
-    }
+  buildQuery(withValues = true) {
+    let statement = this.query.join('\n');
+    statement = statement.replace('{{columns}}', Object.keys(this.Model.columns).join(', '))
 
-    buildQuery() {
-        let finalQuery = '';
-        if (this.queryType === 'INSERT') {
-            finalQuery = this.ignore ? 'INSERT IGNORE ' : 'INSERT ';
-            finalQuery += this.query;
-            if (!this.ignore) {
-                finalQuery += ' ON DUPLICATE KEY UPDATE';
-            }
-        } else if (this.queryType === 'SELECT') {
-            const columnNames = Object.keys(this.columns);
-            finalQuery = `SELECT ${columnNames.join(', ')}` + this.query;
-        }
-        return finalQuery;
+    if (withValues) {
+      return mysql.format(statement, this.values)
+    } else {
+      return statement
     }
+  }
 
-    async exec() {
-        const finalQuery = this.buildQuery();
-        if (this.queryType === 'INSERT') {
-            const columnNames = Object.keys(this.values[0]);
-            this.values = this.values.map(item => columnNames.map(col => item[col]));
-        }
-        return await this.pool.query(finalQuery, this.values.flat());
-    }
+  async exec() {
+    const finalQuery = this.buildQuery(true)
+
+    return await this.pool.query(finalQuery)
+  }
 }
 
 
