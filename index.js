@@ -17,8 +17,9 @@ const pool = mysql
 
 const QueryBuilder = require('./src/QueryBuilder')
 
-pool.SELECT = function (input = '{{columns}}') {
-  return new QueryBuilder(pool, `SELECT ${input}`)
+pool.SELECT = function (first = '{{columns}}', ...others) {
+  const columns = [first, ...others]
+  return new QueryBuilder(pool, `SELECT ${columns.join(', ')}`)
 }
 
 pool.INSERT = function (ignore = false) {

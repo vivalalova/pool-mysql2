@@ -2,38 +2,20 @@ const { pool } = require('../index');
 const Schema = require('../src/Schema')
 const { PK, String, Datetime } = require('../src/Types')
 
-
 class camera extends Schema {
   static get columns() {
     return {
-      id: {
-        type: PK,
-      },
-      name: {
-        type: String,
-      },
-      description: {
-        type: String,
-      },
-      location: {
-        type: String,
-      },
-      url: {
-        type: String,
-      },
-      tag1: {
-        type: String,
-      },
-      created_at: {
-        type: Datetime,
-      },
-      updated_at: {
-        type: Datetime,
-      }
+      id: { type: PK },
+      name: { type: String },
+      description: { type: String },
+      location: { type: String },
+      url: { type: String, },
+      tag1: { type: String, },
+      created_at: { type: Datetime, },
+      updated_at: { type: Datetime, }
     }
   }
 }
-
 
 describe('SELECT', () => {
   test('基本的 SELECT 查詢', () => {
