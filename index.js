@@ -34,4 +34,4 @@ pool.DELETE = function () {
   return new QueryBuilder(pool, 'DELETE')
 }
 
-module.exports = { pool, Schema: require('./src/Schema') }
+module.exports = { pool, Schema: require('./src/Schema'), Types: require('./src/Types') }
