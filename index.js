@@ -22,7 +22,7 @@ pool.SELECT = function () {
 }
 
 pool.INSERT = function (ignore = false) {
-  return new QueryBuilder(pool, `INSERT ${ignore ? 'IGNORE' : ''}`)
+  return new QueryBuilder(pool, `INSERT${ignore ? ' IGNORE' : ''}`)
 }
 
 pool.UPDATE = function (Model) {

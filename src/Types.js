@@ -1,4 +1,10 @@
 class BaseType {
+  static validate(value) {
+    return true
+  }
+}
+
+class PK extends BaseType {
 
 }
 
@@ -10,4 +16,16 @@ class Datetime extends BaseType {
 
 }
 
-module.exports = { BaseType, String, Datetime };
+class Point extends BaseType {
+
+}
+
+class Polygon extends BaseType {
+
+}
+
+class MultiPolygon extends BaseType {
+
+}
+
+module.exports = { BaseType, PK, String, Datetime, Point, Polygon, MultiPolygon };

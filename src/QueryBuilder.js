@@ -23,16 +23,37 @@ module.exports = class QueryBuilder {
   ///////////////////////////////
 
   SET(value) {
-    const updateStatements = Object.keys(this.values[0]).map(col => `${col} = VALUES(${col})`).join(', ');
-    this.query.push(`SET ${updateStatements}, updated_at = NOW()`);
+    const updateStatements = Object.keys(value).map(col => `\`${col}\` = ?`).join(',\n');
+
+    this.query.push(`SET ${updateStatements}`);
+    this.values.push(...Object.values(value))
     return this;
   }
 
+
+  // sql insert 多筆資料
+  // INSERT INTO `camera` (name, description) VALUES ('Test Camera', 'A test camera'), ('Test Camera', 'A test camera');
   VALUES(array) {
-    this.values = array;
-    const columnNames = Object.keys(this.values[0]);
+    let values = []
+    if (array instanceof Array) {
+      values = array
+    } else {
+      values = [array]
+    }
+
+    const columnNames = Object.keys(values[0])
+
     const placeholders = columnNames.map(() => '?').join(', ');
-    this.query.push(`(${columnNames.join(', ')}) VALUES(${placeholders})`);
+
+    this.query.push(`(${columnNames.join(', ')}) VALUES`)
+
+    const valuesPlaceholders = values.map(value => `(${placeholders})`).join(', ')
+    this.query.push(valuesPlaceholders)
+
+    for (const value of values) {
+      this.values = this.values.concat(Object.values(value))
+    }
+
     return this;
   }
 
@@ -84,6 +105,13 @@ module.exports = class QueryBuilder {
     return this;
   }
 
+  ON_DUPLICATE_KEY_UPDATE(object) {
+    this.query.push(`ON DUPLICATE KEY UPDATE ?? = VALUES(??)`)
+    this.values.push(Object.keys(object)[0])
+    this.values.push(Object.keys(object)[0])
+    return this
+  }
+
   LIMIT(limit) {
     this.query.push(`LIMIT ?`);
     this.values.push(limit);
@@ -105,7 +133,7 @@ module.exports = class QueryBuilder {
     this.print = print
     return this
   }
-
+  /////////////////////////////////////////////////
   buildQuery(withValues = true) {
     let columns = Object.keys(this.Model.columns).map(col => `\`${col}\``).join(', ')
     let statement = this.query.join('\n').replace('{{columns}}', columns)
@@ -120,13 +148,19 @@ module.exports = class QueryBuilder {
   async exec() {
     const finalQuery = this.buildQuery(true)
 
-    let from = new Date()
-    const results = await this.pool.query(finalQuery)
-
-    if (this.print) {
-      console.log(`${new Date() - from}ms`, finalQuery)
-    }
+    const results = await measureTime(this.print, () => {
+      return this.pool.query(finalQuery)
+    })
 
     return results.map(result => new this.Model(result))
   }
+}
+
+async function measureTime(ifPrint, fn) {
+  const from = new Date()
+  const result = await fn()
+  if (ifPrint) {
+    console.log(`${new Date() - from}ms`)
+  }
+  return result
 }

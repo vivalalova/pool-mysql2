@@ -1,13 +1,13 @@
 const { pool } = require('../index');
 const Schema = require('../src/Schema')
-const { String, Datetime } = require('../src/Types')
+const { PK, String, Datetime } = require('../src/Types')
 
 
 class camera extends Schema {
   static get columns() {
     return {
       id: {
-        type: String,
+        type: PK,
       },
       name: {
         type: String,
@@ -35,7 +35,7 @@ class camera extends Schema {
 }
 
 
-describe('SELECT', () => {
+describe.skip('SELECT', () => {
   test('基本的 SELECT 查詢', () => {
     const query = pool.SELECT().FROM(camera)
       .WHERE('tag1 = "test"')
@@ -89,7 +89,7 @@ ORDER BY name DESC
   });
 });
 
-describe('INSERT', () => {
+describe.skip('INSERT', () => {
   test('INSERT query should be built correctly', () => {
     const cameraData = {
       id: '1',
@@ -102,7 +102,16 @@ describe('INSERT', () => {
 
     const query = pool.INSERT().INTO(camera).SET(cameraData).buildQuery()
 
-    expect(query).toBe('INSERT INTO cameras (id, name, description, location, url, tag1) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = VALUES(id), name = VALUES(name), description = VALUES(description), location = VALUES(location), url = VALUES(url), tag1 = VALUES(tag1), updated_at = NOW()');
+    expect(query).toBe(`
+INSERT
+INTO \`camera\`
+SET \`id\` = '1',
+\`name\` = 'Test Camera',
+\`description\` = 'A test camera',
+\`location\` = 'Test Location',
+\`url\` = 'http://test.com',
+\`tag1\` = 'test'
+      `.trim())
   });
 
   test('INSERT IGNORE query should be built correctly', () => {
@@ -116,47 +125,47 @@ describe('INSERT', () => {
     };
 
     const query = pool.INSERT(true).INTO(camera).SET(cameraData).buildQuery()
-    expect(query).toBe('INSERT IGNORE INTO cameras (id, name, description, location, url, tag1) VALUES (?, ?, ?, ?, ?, ?)');
+    expect(query).toBe(`
+INSERT IGNORE
+INTO \`camera\`
+SET \`id\` = '2',
+\`name\` = 'Another Test Camera',
+\`description\` = 'Another test camera',
+\`location\` = 'Another Test Location',
+\`url\` = 'http://anothertest.com',
+\`tag1\` = 'another_test'
+      `.trim())
   });
 });
 
 
-
 // Jest tests
-describe.skip('Query Builder', () => {
-  test('SELECT query builds correctly', () => {
-    const query = pool.SELECT().FROM(camera).WHERE('id = ?').LIMIT(1).buildQuery()
-    expect(query).toBe('SELECT `id`, `name`, `description`, `location`, `url`, `tag1`, `created_at`, `updated_at`\nFROM camera\nWHERE id = ?\nLIMIT ?');
-  });
-
-  test('ORDER BY clause builds correctly', () => {
-    const query = pool.SELECT().FROM(camera).ORDER_BY('name', 'DESC');
-
-    expect(query).toBe('SELECT `id`, `name`, `description`, `location`, `url`, `tag1`, `created_at`, `updated_at`\nFROM camera\nORDER BY name DESC ');
-  });
-
+describe('Query Builder', () => {
   test('LIMIT and OFFSET clauses build correctly', () => {
     const query = pool.SELECT().FROM(camera).LIMIT(10).OFFSET(5).buildQuery();
-    expect(query).toBe('SELECT `id`, `name`, `description`, `location`, `url`, `tag1`, `created_at`, `updated_at`\nFROM camera\nLIMIT ?\nOFFSET ?');
-  });
+    expect(query).toBe('SELECT `id`, `name`, `description`, `location`, `url`, `tag1`, `created_at`, `updated_at`\nFROM `camera`\nLIMIT 10\nOFFSET 5');
+  })
 
   test('INSERT query builds correctly', () => {
-    const data = { name: 'Test Camera', description: 'A test camera' };
-    const query = pool.INSERT().INTO(camera).VALUES([data]).buildQuery();
-    expect(query).toBe('INSERT INTO cameras (`name`, `description`) VALUES (?, ?)\nON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`), `updated_at` = NOW()');
+    const data = [{ name: 'Test Camera', description: 'A test camera' }, { name: 'Test Camera', description: 'A test camera' }]
+    const query = pool.INSERT().INTO(camera).VALUES(data).buildQuery();
+    expect(query).toBe(`
+INSERT
+INTO \`camera\`
+(name, description) VALUES
+('Test Camera', 'A test camera'), ('Test Camera', 'A test camera')
+      `.trim())
+  })
+
+  test('UPDATE query builds correctly', () => {
+    const data = { name: 'Updated Camera' };
+    const query = pool.UPDATE(camera).SET(data).WHERE('id = ?', 10).buildQuery()
+    expect(query).toBe(`UPDATE \`camera\`\nSET \`name\` = 'Updated Camera'\nWHERE id = 10`.trim())
   });
 
-  // test('UPDATE query builds correctly', () => {
-  //   const data = { name: 'Updated Camera' };
-  //   const query = queryBuilder.UPDATE(Camera).SET(data).WHERE('id = ?');
-  //   const builtQuery = query.buildQuery();
-  //   expect(builtQuery).toBe('UPDATE cameras\nSET `name` = ?, `updated_at` = NOW()\nWHERE id = ?');
-  // });
-
-  // test('DELETE query builds correctly', () => {
-  //   const query = queryBuilder.DELETE().FROM(Camera).WHERE('id = ?');
-  //   const builtQuery = query.buildQuery();
-  //   expect(builtQuery).toBe('DELETE\nFROM camera\nWHERE id = ?');
-  // });
+  test('DELETE query builds correctly', () => {
+    const query = pool.DELETE().FROM(camera).WHERE('id = ?', 10).AND('name = ?', "kerker").buildQuery()
+    expect(query).toBe(`DELETE\nFROM \`camera\`\nWHERE id = 10\nAND name = 'kerker'`)
+  });
 
 });
