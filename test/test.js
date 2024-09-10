@@ -35,13 +35,13 @@ class camera extends Schema {
 }
 
 
-describe.skip('SELECT', () => {
+describe('SELECT', () => {
   test('基本的 SELECT 查詢', () => {
     const query = pool.SELECT().FROM(camera)
       .WHERE('tag1 = "test"')
       .ORDER_BY('name', 'DESC')
       .LIMIT(10)
-      .OFFSET(0)
+      .OFFSET(3)
 
     const builtQuery = query.buildQuery();
     expect(builtQuery).toBe(`
@@ -50,9 +50,10 @@ FROM \`camera\`
 WHERE tag1 = "test"
 ORDER BY name DESC
 LIMIT 10
-OFFSET 0
+OFFSET 3
       `.trim())
   })
+
 
   test('帶有對象條件的 SELECT 查詢', () => {
     const query = pool.SELECT().FROM(camera)
@@ -87,10 +88,26 @@ AND \`id\` = 1
 ORDER BY name DESC
       `.trim())
   });
+
+  test('自訂欄位 查詢', () => {
+    const query = pool.SELECT('id').FROM(camera)
+      .WHERE_AND({ tag1: 'test', id: 1 })
+      .ORDER_BY('name', 'DESC')
+
+    const builtQuery = query.buildQuery();
+    expect(builtQuery).toBe(`
+SELECT id
+FROM \`camera\`
+WHERE 1=1
+AND \`tag1\` = 'test'
+AND \`id\` = 1
+ORDER BY name DESC
+      `.trim())
+  });
 });
 
-describe.skip('INSERT', () => {
-  test('INSERT query should be built correctly', () => {
+describe('INSERT', () => {
+  test('INSERT 單筆', () => {
     const cameraData = {
       id: '1',
       name: 'Test Camera',
@@ -136,15 +153,7 @@ SET \`id\` = '2',
 \`tag1\` = 'another_test'
       `.trim())
   });
-});
 
-
-// Jest tests
-describe('Query Builder', () => {
-  test('LIMIT and OFFSET clauses build correctly', () => {
-    const query = pool.SELECT().FROM(camera).LIMIT(10).OFFSET(5).buildQuery();
-    expect(query).toBe('SELECT `id`, `name`, `description`, `location`, `url`, `tag1`, `created_at`, `updated_at`\nFROM `camera`\nLIMIT 10\nOFFSET 5');
-  })
 
   test('INSERT query builds correctly', () => {
     const data = [{ name: 'Test Camera', description: 'A test camera' }, { name: 'Test Camera', description: 'A test camera' }]
@@ -156,16 +165,59 @@ INTO \`camera\`
 ('Test Camera', 'A test camera'), ('Test Camera', 'A test camera')
       `.trim())
   })
+});
 
-  test('UPDATE query builds correctly', () => {
+
+// Jest tests
+describe('UPDATE', () => {
+  test('單一欄位的 UPDATE 查詢正確構建', () => {
     const data = { name: 'Updated Camera' };
     const query = pool.UPDATE(camera).SET(data).WHERE('id = ?', 10).buildQuery()
     expect(query).toBe(`UPDATE \`camera\`\nSET \`name\` = 'Updated Camera'\nWHERE id = 10`.trim())
   });
 
-  test('DELETE query builds correctly', () => {
+  test('多個欄位的 UPDATE 查詢正確構建', () => {
+    const data = { name: 'Updated Camera', description: 'New description' };
+    const query = pool.UPDATE(camera).SET(data).WHERE('id = ?', 10).buildQuery()
+    expect(query).toBe(`UPDATE \`camera\`\nSET \`name\` = 'Updated Camera',\n\`description\` = 'New description'\nWHERE id = 10`.trim())
+  });
+
+  test('多個 WHERE 條件的 UPDATE 查詢正確構建', () => {
+    const data = { status: 'inactive' };
+    const query = pool.UPDATE(camera).SET(data).WHERE('id = ?', 10).AND('name = ?', 'Old Camera').buildQuery()
+    expect(query).toBe(`UPDATE \`camera\`\nSET \`status\` = 'inactive'\nWHERE id = 10\nAND name = 'Old Camera'`.trim())
+  });
+
+  test('帶有 LIMIT 的 UPDATE 查詢正確構建', () => {
+    const data = { views: 100 };
+    const query = pool.UPDATE(camera).SET(data).WHERE('views < ?', 50).LIMIT(5).buildQuery()
+    expect(query).toBe(`UPDATE \`camera\`\nSET \`views\` = 100\nWHERE views < 50\nLIMIT 5`.trim())
+  });
+});
+
+describe('DELETE', () => {
+  test('基本的 DELETE 查詢正確構建', () => {
+    const query = pool.DELETE().FROM(camera).WHERE('id = ?', 10).buildQuery()
+    expect(query).toBe(`DELETE\nFROM \`camera\`\nWHERE id = 10`)
+  });
+
+  test('帶有多個條件的 DELETE 查詢正確構建', () => {
     const query = pool.DELETE().FROM(camera).WHERE('id = ?', 10).AND('name = ?', "kerker").buildQuery()
     expect(query).toBe(`DELETE\nFROM \`camera\`\nWHERE id = 10\nAND name = 'kerker'`)
   });
 
+  test('帶有 LIMIT 的 DELETE 查詢正確構建', () => {
+    const query = pool.DELETE().FROM(camera).WHERE('created_at < ?', '2023-01-01').LIMIT(5).buildQuery()
+    expect(query).toBe(`DELETE\nFROM \`camera\`\nWHERE created_at < '2023-01-01'\nLIMIT 5`)
+  });
+
+  test('帶有對象條件的 DELETE 查詢正確構建', () => {
+    const query = pool.DELETE().FROM(camera).WHERE({ tag1: 'obsolete' }).buildQuery()
+    expect(query).toBe(`DELETE\nFROM \`camera\`\nWHERE \`tag1\` = 'obsolete'`)
+  });
+
+  test('帶有多個對象條件的 DELETE 查詢正確構建', () => {
+    const query = pool.DELETE().FROM(camera).WHERE({ tag1: 'obsolete' }).AND({ location: 'unknown' }).buildQuery()
+    expect(query).toBe(`DELETE\nFROM \`camera\`\nWHERE \`tag1\` = 'obsolete'\nAND \`location\` = 'unknown'`)
+  });
 });

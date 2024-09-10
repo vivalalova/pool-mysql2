@@ -135,7 +135,14 @@ module.exports = class QueryBuilder {
   }
   /////////////////////////////////////////////////
   buildQuery(withValues = true) {
-    let columns = Object.keys(this.Model.columns).map(col => `\`${col}\``).join(', ')
+    let columns = '*'
+
+    if (Object.keys(this.Model.columns).length > 0) {
+      columns = Object.keys(this.Model.columns).map(col => `\`${col}\``).join(', ')
+    } else {
+      columns = '*'
+    }
+
     let statement = this.query.join('\n').replace('{{columns}}', columns)
 
     if (withValues) {
@@ -145,22 +152,18 @@ module.exports = class QueryBuilder {
     }
   }
 
-  async exec() {
-    const finalQuery = this.buildQuery(true)
+  async exec(connection = null) {
+    const finalQuery = this.buildQuery(true).replace(/\n/g, ' ')
 
-    const results = await measureTime(this.print, () => {
-      return this.pool.query(finalQuery)
-    })
+    const from = new Date()
+
+    const client = connection || this.pool
+    const results = await client.query(finalQuery)
+
+    if (this.print) {
+      console.log(`${new Date() - from}ms`, finalQuery)
+    }
 
     return results.map(result => new this.Model(result))
   }
-}
-
-async function measureTime(ifPrint, fn) {
-  const from = new Date()
-  const result = await fn()
-  if (ifPrint) {
-    console.log(`${new Date() - from}ms`)
-  }
-  return result
 }

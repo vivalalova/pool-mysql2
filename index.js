@@ -1,4 +1,4 @@
-const mysql = require('mysql2')
+const mysql = require('mysql2/promise')
 
 const pool = mysql
   .createPool({
@@ -17,8 +17,8 @@ const pool = mysql
 
 const QueryBuilder = require('./src/QueryBuilder')
 
-pool.SELECT = function () {
-  return new QueryBuilder(pool, 'SELECT {{columns}}')
+pool.SELECT = function (input = '{{columns}}') {
+  return new QueryBuilder(pool, `SELECT ${input}`)
 }
 
 pool.INSERT = function (ignore = false) {
@@ -33,4 +33,4 @@ pool.DELETE = function () {
   return new QueryBuilder(pool, 'DELETE')
 }
 
-module.exports = { pool }
+module.exports = { pool, Schema: require('./src/Schema') }
