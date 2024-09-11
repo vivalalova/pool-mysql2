@@ -22,25 +22,15 @@ module.exports = class QueryBuilder {
 
   ///////////////////////////////
 
-  SET(statement, value) {
-    if (typeof statement === 'object') {
-      const updateStatements = Object.keys(statement).map(col => `\`${col}\` = ?`).join(',\n');
+  SET(input, value) {
+    if (typeof input === 'object') {
+      const updateStatements = Object.keys(input).map(col => `\`${col}\` = ?`).join(',\n');
 
       this.query.push(`SET ${updateStatements}`);
 
-      for (const key in statement) {
-        const value = statement[key]
-        const { type: { mapper } = {} } = this.Model.columns[key] ?? {}
-
-        if (mapper) {
-          const mappedValue = mapper(value)
-          this.values.push(mappedValue)
-        } else {
-          this.values.push(value)
-        }
-      }
+      this.values.push(...this._mapValue([input]))
     } else {
-      this.query.push(`SET ${statement}`)
+      this.query.push(`SET ${input}`)
       if (value != undefined) {
         this.values.push(...value)
       }
@@ -48,31 +38,44 @@ module.exports = class QueryBuilder {
     return this;
   }
 
-
   // sql insert 多筆資料
   // INSERT INTO `camera` (name, description) VALUES ('Test Camera', 'A test camera'), ('Test Camera', 'A test camera');
-  VALUES(array) {
-    let values = []
-    if (array instanceof Array) {
-      values = array
-    } else {
-      values = [array]
-    }
+  VALUES(input) {
+    const array = (input instanceof Array) ? input : [input]
 
-    const columnNames = Object.keys(values[0])
+    const columnNames = Object.keys(array[0])
 
-    const placeholders = columnNames.map(() => '?').join(', ');
+    this.query.push(`(${columnNames.join(', ')})`)
 
-    this.query.push(`(${columnNames.join(', ')}) VALUES`)
+    const placeholders = columnNames.map(() => '?').join(', ')
+    const valuesPlaceholders = array.map(_ => `(${placeholders})`).join(', ')
 
-    const valuesPlaceholders = values.map(_ => `(${placeholders})`).join(', ')
-    this.query.push(valuesPlaceholders)
 
-    for (const value of values) {
-      this.values = this.values.concat(Object.values(value))
-    }
+    this.query.push('VALUES ' + valuesPlaceholders)
+    this.values.push(...this._mapValue(array))
 
     return this;
+  }
+
+  _mapValue(array) {
+    const columns = this.Model.columns
+
+    const results = []
+
+    for (const object of array) {
+      for (const key in object) {
+        const { type: { mapper } = {} } = columns[key] ?? {}
+
+        if (mapper) {
+          const mappedValue = mapper(object[key])
+          results.push(mappedValue)
+        } else {
+          results.push(object[key])
+        }
+      }
+    }
+
+    return results
   }
 
   WHERE_AND(object) {

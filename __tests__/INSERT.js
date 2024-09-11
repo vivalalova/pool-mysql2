@@ -55,13 +55,17 @@ tag1 = 'another_test'
 
 
   test('INSERT query builds correctly', () => {
-    const data = [{ name: 'Test Camera', description: 'A test camera' }, { name: 'Test Camera', description: 'A test camera' }]
+    const data = [
+      { name: 'Test Camera', description: 'A test camera', location: { x: 1, y: 1 } },
+      { name: 'Test Camera', description: 'A test camera', location: { x: 1, y: 1 } }
+    ]
+
     const query = pool.INSERT().INTO(camera).VALUES(data).buildQuery();
     expect(query).toBe(`
 INSERT
 INTO \`camera\`
-(name, description) VALUES
-('Test Camera', 'A test camera'), ('Test Camera', 'A test camera')
+(name, description, location)
+VALUES ('Test Camera', 'A test camera', POINT(1, 1)), ('Test Camera', 'A test camera', POINT(1, 1))
       `.trim())
   })
 });
