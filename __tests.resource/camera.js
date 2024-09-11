@@ -1,4 +1,4 @@
-const { pool, Schema, Types } = require('../../index')
+const { pool, Schema, Types } = require('../index')(require('./Options'))
 
 module.exports = class camera extends Schema {
   static get columns() {
@@ -6,7 +6,7 @@ module.exports = class camera extends Schema {
       id: { type: Types.PK },
       name: { type: Types.String },
       description: { type: Types.String },
-      location: { type: Types.String },
+      location: { type: Types.Point },
       url: { type: Types.String },
       tag1: { type: Types.String },
       created_at: { type: Types.Datetime },

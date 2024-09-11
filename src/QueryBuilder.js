@@ -22,11 +22,29 @@ module.exports = class QueryBuilder {
 
   ///////////////////////////////
 
-  SET(value) {
-    const updateStatements = Object.keys(value).map(col => `\`${col}\` = ?`).join(',\n');
+  SET(statement, value) {
+    if (typeof statement === 'object') {
+      const updateStatements = Object.keys(statement).map(col => `\`${col}\` = ?`).join(',\n');
 
-    this.query.push(`SET ${updateStatements}`);
-    this.values.push(...Object.values(value))
+      this.query.push(`SET ${updateStatements}`);
+
+      for (const key in statement) {
+        const value = statement[key]
+        const { type: { mapper } = {} } = this.Model.columns[key] ?? {}
+
+        if (mapper) {
+          const mappedValue = mapper(value)
+          this.values.push(mappedValue)
+        } else {
+          this.values.push(value)
+        }
+      }
+    } else {
+      this.query.push(`SET ${statement}`)
+      if (value != undefined) {
+        this.values.push(...value)
+      }
+    }
     return this;
   }
 
@@ -47,7 +65,7 @@ module.exports = class QueryBuilder {
 
     this.query.push(`(${columnNames.join(', ')}) VALUES`)
 
-    const valuesPlaceholders = values.map(value => `(${placeholders})`).join(', ')
+    const valuesPlaceholders = values.map(_ => `(${placeholders})`).join(', ')
     this.query.push(valuesPlaceholders)
 
     for (const value of values) {
@@ -72,7 +90,7 @@ module.exports = class QueryBuilder {
     return this;
   }
 
-  WHERE(condition, value = null) {
+  WHERE(condition, value) {
     if (typeof condition === 'string') {
 
       this.query.push('WHERE ' + condition)
@@ -89,7 +107,7 @@ module.exports = class QueryBuilder {
     return this;
   }
 
-  AND(condition, value = null) {
+  AND(condition, value) {
     if (typeof condition === 'string') {
       this.query.push('AND ' + condition)
       if (value != undefined) {
@@ -152,7 +170,7 @@ module.exports = class QueryBuilder {
     }
   }
 
-  async exec(connection = null) {
+  async exec(connection) {
     const finalQuery = this.buildQuery(true).replace(/\n/g, ' ')
 
     const from = new Date()
