@@ -125,10 +125,11 @@ module.exports = class QueryBuilder {
     return this;
   }
 
-  ON_DUPLICATE_KEY_UPDATE(object) {
-    this.query.push(`ON DUPLICATE KEY UPDATE ?? = VALUES(??)`)
-    this.values.push(Object.keys(object)[0])
-    this.values.push(Object.keys(object)[0])
+  ON_DUPLICATE_KEY_UPDATE(...keys) {
+    this.query.push(`ON DUPLICATE KEY UPDATE`)
+    this.query.push(keys.map(_ => '?? = VALUES(??)').join(',\n'))
+    this.values.push(...keys.flatMap(key => [key, key]))
+
     return this
   }
 
@@ -178,12 +179,16 @@ module.exports = class QueryBuilder {
     const from = new Date()
 
     const client = connection || this.pool
-    const results = await client.query(finalQuery)
+    const [rows, fields] = await client.query(finalQuery)
 
     if (this.print) {
       console.log(`${new Date() - from}ms`, finalQuery)
     }
 
-    return results.map(result => new this.Model(result))
+    if (rows instanceof Array) {
+      return rows.map(row => new this.Model(row))
+    } else {
+      return rows
+    }
   }
 }
