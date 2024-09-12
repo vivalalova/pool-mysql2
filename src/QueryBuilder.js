@@ -50,7 +50,6 @@ module.exports = class QueryBuilder {
     const placeholders = columnNames.map(() => '?').join(', ')
     const valuesPlaceholders = array.map(_ => `(${placeholders})`).join(', ')
 
-
     this.query.push('VALUES ' + valuesPlaceholders)
     this.values.push(...this._mapValue(array))
 
