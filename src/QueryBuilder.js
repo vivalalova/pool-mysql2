@@ -1,6 +1,15 @@
 const mysql = require('mysql2')
 
+/**
+ * 構建查詢的類
+ */
 module.exports = class QueryBuilder {
+  /**
+   * 構造函數
+   * @param {any} pool - 數據庫連接池
+   * @param {string} firstStatement - 第一個語句
+   * @param {object} options - 選項
+   */
   constructor(pool, firstStatement, options = {}) {
     this.pool = pool
     this.Model = options.Model
@@ -8,20 +17,35 @@ module.exports = class QueryBuilder {
     this.values = []
   }
 
+  /**
+   * 添加 INTO 條件
+   * @param {any} Model - 要添加的值
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   INTO(Model) {
     this.Model = Model
     this.query.push(`INTO \`${this.Model.name}\``)
     return this
   }
 
+  /**
+   * 添加 FROM 條件
+   * @param {any} Model - 要添加的值
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   FROM(Model) {
     this.Model = Model
     this.query.push(`FROM \`${this.Model.name}\``)
     return this
   }
 
-  ///////////////////////////////
+  //==========set====================================
 
+  /**
+   * 添加 SET 條件
+   * @param {any} input - 要添加的值
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   SET(input, value) {
     if (typeof input === 'object') {
       const updateStatements = Object.keys(input).map(col => `\`${col}\` = ?`).join(',\n')
@@ -40,6 +64,12 @@ module.exports = class QueryBuilder {
 
   // sql insert 多筆資料
   // INSERT INTO `camera` (name, description) VALUES ('Test Camera', 'A test camera'), ('Test Camera', 'A test camera');
+
+  /**
+   * 添加 VALUES 條件
+   * @param {any} input - 要添加的值
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   VALUES(input) {
     const array = (input instanceof Array) ? input : [input]
 
@@ -77,6 +107,17 @@ module.exports = class QueryBuilder {
     return results
   }
 
+  //==========conditions====================================
+
+  // 用 object 的方式帶入 WHERE 跟 AND 的條件
+  // WHERE_AND({ tag1: 'test', id: 1 })
+  // 用Object.keys()的順序下條件
+
+  /**
+   * 添加 WHERE 和 AND 條件
+   * @param {object} object - 包含條件的物件
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   WHERE_AND(object) {
     if (typeof object !== 'object') {
       throw 'WHERE_CLAUSE must input object'
@@ -92,13 +133,16 @@ module.exports = class QueryBuilder {
     return this
   }
 
+  /**
+   * 添加 WHERE 條件
+   * @param {string} condition - 要添加的條件
+   * @param {any} value - 在條件中使用的值
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   WHERE(condition, value) {
     if (typeof condition === 'string') {
-
       this.query.push('WHERE ' + condition)
-      if (value != undefined) {
-        this.values.push(value)
-      }
+      this.values.push(... this._valueHandle(value))
     } else if (typeof condition === 'object') {
       this.query.push('WHERE ?? = ?')
 
@@ -109,12 +153,17 @@ module.exports = class QueryBuilder {
     return this
   }
 
+  /**
+   * 添加 AND 條件
+   * @param {string} condition - 要添加的條件
+   * @param {any} value - 在條件中使用的值
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+  */
+
   AND(condition, value) {
     if (typeof condition === 'string') {
       this.query.push('AND ' + condition)
-      if (value != undefined) {
-        this.values.push(value)
-      }
+      this.values.push(... this._valueHandle(value))
     } else if (typeof condition === 'object') {
       this.query.push('AND ?? = ?')
 
@@ -125,6 +174,27 @@ module.exports = class QueryBuilder {
     return this
   }
 
+  /**
+   * 處理 WHERE 和 AND 條件中的值
+   * @param {any} value - 要處理的值
+   * @returns {any[]} - 處理後的值
+   */
+  _valueHandle(value) {
+    if (value instanceof Array) {
+      return value
+    } else if (value != undefined) {
+      return [value]
+    } else {
+      return []
+    }
+  }
+
+  //==========others====================================
+  /**
+   * 添加 ON DUPLICATE KEY UPDATE 條件
+   * @param  {...any} keys - 要更新的列名
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   ON_DUPLICATE_KEY_UPDATE(...keys) {
     this.query.push('ON DUPLICATE KEY UPDATE')
     this.query.push(keys.map(_ => '?? = VALUES(??)').join(',\n'))
@@ -133,28 +203,56 @@ module.exports = class QueryBuilder {
     return this
   }
 
+  /**
+   * 添加 LIMIT 條件
+   * @param {number} limit - 限制的數量
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   LIMIT(limit) {
     this.query.push('LIMIT ?')
     this.values.push(limit)
     return this
   }
 
+  /**
+   * 添加 OFFSET 條件
+   * @param {number} offset - 偏移量
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   OFFSET(offset) {
     this.query.push('OFFSET ?')
     this.values.push(offset)
     return this
   }
 
+  /**
+   * 添加 ORDER BY 條件
+   * @param {string} column - 要排序的列名
+   * @param {string} direction - 排序方向，默認為 'ASC'
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+  */
   ORDER_BY(column, direction = 'ASC') {
     this.query.push(`ORDER BY ${column} ${direction}`)
     return this
   }
 
+  /**
+   * 設置是否打印查詢
+   * @param {boolean} print - 是否打印查詢，默認為 true
+   * @returns {QueryBuilder} - 當前的 QueryBuilder 實例
+   */
   PRINT(print = true) {
     this.print = print
     return this
   }
-  /////////////////////////////////////////////////
+
+  //==========buildQuery====================================
+
+  /**
+   * 構建查詢字符串
+   * @param {boolean} withValues - 是否包含值，默認為 true
+   * @returns {string} - 構建的查詢字符串
+   */
   buildQuery(withValues = true) {
     let columns = '*'
 
@@ -173,6 +271,11 @@ module.exports = class QueryBuilder {
     }
   }
 
+  /**
+   * 執行查詢
+   * @param {any} connection - 數據庫連接
+   * @returns {Promise<any>} - 查詢結果
+   */
   async exec(connection) {
     const finalQuery = this.buildQuery(true).replace(/\n/g, ' ')
 

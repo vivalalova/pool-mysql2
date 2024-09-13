@@ -20,6 +20,44 @@ OFFSET 3
       `.trim())
   })
 
+  test('基本的 SELECT 查詢, 帶value', () => {
+    const query = pool.SELECT().FROM(camera)
+      .WHERE('tag1 = ?', 'test')
+      .AND('id = ?', 1)
+      .ORDER_BY('name', 'DESC')
+      .LIMIT(10)
+      .OFFSET(3)
+
+    const builtQuery = query.buildQuery()
+    expect(builtQuery).toBe(`
+SELECT \`id\`, \`name\`, \`description\`, \`location\`, \`url\`, \`tag1\`, \`created_at\`, \`updated_at\`
+FROM \`camera\`
+WHERE tag1 = 'test'
+AND id = 1
+ORDER BY name DESC
+LIMIT 10
+OFFSET 3
+      `.trim())
+  })
+
+  test('基本的 SELECT 查詢, 帶value', () => {
+    const query = pool.SELECT().FROM(camera)
+      .WHERE('tag1 = ? AND id = ?', ['test', 1])
+      .ORDER_BY('name', 'DESC')
+      .LIMIT(10)
+      .OFFSET(3)
+
+    const builtQuery = query.buildQuery()
+    expect(builtQuery).toBe(`
+SELECT \`id\`, \`name\`, \`description\`, \`location\`, \`url\`, \`tag1\`, \`created_at\`, \`updated_at\`
+FROM \`camera\`
+WHERE tag1 = 'test' AND id = 1
+ORDER BY name DESC
+LIMIT 10
+OFFSET 3
+      `.trim())
+  })
+
   test('帶有對象條件的 SELECT 查詢', () => {
     const query = pool.SELECT().FROM(camera)
       .WHERE({ tag1: 'test' })
