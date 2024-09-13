@@ -71,4 +71,4 @@ class MultiPolygon extends BaseType {
 
 }
 
-module.exports = { BaseType, PK, String, Datetime, Point, Polygon, MultiPolygon };
+module.exports = { BaseType, PK, String, Datetime, Point, Polygon, MultiPolygon }

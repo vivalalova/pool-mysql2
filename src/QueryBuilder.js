@@ -9,24 +9,24 @@ module.exports = class QueryBuilder {
   }
 
   INTO(Model) {
-    this.Model = Model;
-    this.query.push(`INTO \`${this.Model.name}\``);
-    return this;
+    this.Model = Model
+    this.query.push(`INTO \`${this.Model.name}\``)
+    return this
   }
 
   FROM(Model) {
-    this.Model = Model;
-    this.query.push(`FROM \`${this.Model.name}\``);
-    return this;
+    this.Model = Model
+    this.query.push(`FROM \`${this.Model.name}\``)
+    return this
   }
 
   ///////////////////////////////
 
   SET(input, value) {
     if (typeof input === 'object') {
-      const updateStatements = Object.keys(input).map(col => `\`${col}\` = ?`).join(',\n');
+      const updateStatements = Object.keys(input).map(col => `\`${col}\` = ?`).join(',\n')
 
-      this.query.push(`SET ${updateStatements}`);
+      this.query.push(`SET ${updateStatements}`)
 
       this.values.push(...this._mapValue([input]))
     } else {
@@ -35,7 +35,7 @@ module.exports = class QueryBuilder {
         this.values.push(...value)
       }
     }
-    return this;
+    return this
   }
 
   // sql insert 多筆資料
@@ -53,7 +53,7 @@ module.exports = class QueryBuilder {
     this.query.push('VALUES ' + valuesPlaceholders)
     this.values.push(...this._mapValue(array))
 
-    return this;
+    return this
   }
 
   _mapValue(array) {
@@ -89,7 +89,7 @@ module.exports = class QueryBuilder {
       result = result.AND({ [key]: value })
     }
 
-    return this;
+    return this
   }
 
   WHERE(condition, value) {
@@ -100,13 +100,13 @@ module.exports = class QueryBuilder {
         this.values.push(value)
       }
     } else if (typeof condition === 'object') {
-      this.query.push(`WHERE ?? = ?`)
+      this.query.push('WHERE ?? = ?')
 
       this.values.push(Object.keys(condition)[0])
       this.values.push(Object.values(condition)[0])
     }
 
-    return this;
+    return this
   }
 
   AND(condition, value) {
@@ -116,17 +116,17 @@ module.exports = class QueryBuilder {
         this.values.push(value)
       }
     } else if (typeof condition === 'object') {
-      this.query.push(`AND ?? = ?`)
+      this.query.push('AND ?? = ?')
 
       this.values.push(Object.keys(condition)[0])
       this.values.push(Object.values(condition)[0])
     }
 
-    return this;
+    return this
   }
 
   ON_DUPLICATE_KEY_UPDATE(...keys) {
-    this.query.push(`ON DUPLICATE KEY UPDATE`)
+    this.query.push('ON DUPLICATE KEY UPDATE')
     this.query.push(keys.map(_ => '?? = VALUES(??)').join(',\n'))
     this.values.push(...keys.flatMap(key => [key, key]))
 
@@ -134,20 +134,20 @@ module.exports = class QueryBuilder {
   }
 
   LIMIT(limit) {
-    this.query.push(`LIMIT ?`);
-    this.values.push(limit);
-    return this;
+    this.query.push('LIMIT ?')
+    this.values.push(limit)
+    return this
   }
 
   OFFSET(offset) {
-    this.query.push(`OFFSET ?`);
-    this.values.push(offset);
-    return this;
+    this.query.push('OFFSET ?')
+    this.values.push(offset)
+    return this
   }
 
   ORDER_BY(column, direction = 'ASC') {
-    this.query.push(`ORDER BY ${column} ${direction}`);
-    return this;
+    this.query.push(`ORDER BY ${column} ${direction}`)
+    return this
   }
 
   PRINT(print = true) {
