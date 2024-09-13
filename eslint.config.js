@@ -16,6 +16,7 @@ module.exports = [
       'semi': ['error', 'never'],
       'no-unused-vars': 'off',
       'no-console': ['warn'],
+      'no-multiple-empty-lines': ['error', { 'max': 1, 'maxEOF': 0, 'maxBOF': 0 }],
     }),
   },
 ]

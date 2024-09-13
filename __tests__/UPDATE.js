@@ -2,7 +2,6 @@ const { pool, Schema, Types } = require('../index')(require('../__tests.resource
 
 const camera = require('../__tests.resource/camera')
 
-
 // Jest tests
 describe('UPDATE', () => {
   test('單一欄位的 UPDATE 查詢正確構建', () => {

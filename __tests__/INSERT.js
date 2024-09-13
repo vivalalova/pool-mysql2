@@ -52,7 +52,6 @@ tag1 = 'another_test'
       `.trim())
   })
 
-
   test('INSERT query builds correctly', () => {
     const data = [
       { name: 'Test Camera', description: 'A test camera', location: { x: 1, y: 1 } },
